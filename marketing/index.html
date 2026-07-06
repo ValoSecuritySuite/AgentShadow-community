@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AgentShadow — Discover. Govern. Protect.</title>
+    <link rel="icon" href="assets/favicon.png" type="image/png" />
+    <meta
+      name="description"
+      content="AgentShadow finds every AI agent across your code and runtime, scores its risk deterministically, and enforces governance policies — built on the proven Valo security platform."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #070b18;
+        --bg-soft: #0c1224;
+        --card: rgba(20, 27, 48, 0.72);
+        --card-solid: #121a30;
+        --border: rgba(124, 131, 255, 0.16);
+        --border-strong: rgba(124, 131, 255, 0.32);
+        --text: #eef1fb;
+        --muted: #9aa6c6;
+        --muted-dim: #6b769a;
+        --brand: #8b8fff;
+        --brand2: #5b54f0;
+        --brand3: #b794ff;
+        --cyan: #45d6ff;
+        --crit: #fb7185;
+        --warn: #fbbf24;
+        --ok: #34d399;
+        --radius: 18px;
+        --shadow: 0 30px 70px -30px rgba(2, 6, 23, 0.9);
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html { scroll-behavior: smooth; }
+      body {
+        font-family: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.65;
+        -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
+      }
+      a { color: inherit; }
+      .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+      .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+
+      /* Ambient background glows */
+      .glow {
+        position: fixed; border-radius: 50%; filter: blur(120px); opacity: 0.5;
+        pointer-events: none; z-index: 0;
+      }
+      .glow.a { width: 620px; height: 620px; top: -240px; right: -120px; background: radial-gradient(circle, #5b54f0 0%, transparent 70%); }
+      .glow.b { width: 520px; height: 520px; top: 540px; left: -200px; background: radial-gradient(circle, #45d6ff 0%, transparent 70%); opacity: 0.28; }
+      .glow.c { width: 560px; height: 560px; bottom: -200px; right: -100px; background: radial-gradient(circle, #b794ff 0%, transparent 70%); opacity: 0.22; }
+      main, header { position: relative; z-index: 1; }
+
+      /* Header */
+      header {
+        position: sticky; top: 0; z-index: 50;
+        backdrop-filter: blur(14px);
+        background: rgba(7, 11, 24, 0.72);
+        border-bottom: 1px solid rgba(124, 131, 255, 0.08);
+      }
+      .nav-inner { display: flex; align-items: center; justify-content: space-between; padding: 16px 0; }
+      .logo { display: flex; align-items: center; gap: 12px; text-decoration: none; flex-shrink: 0; }
+      .logo-mark { height: 42px; width: auto; display: block; }
+      .logo-copy { display: flex; flex-direction: column; gap: 3px; }
+      .logo-word {
+        font-size: 20px; font-weight: 800; letter-spacing: -0.03em; line-height: 1;
+        white-space: nowrap;
+      }
+      .logo-agent { color: var(--text); }
+      .logo-shadow {
+        background: linear-gradient(120deg, #9d6cff 0%, #6366f1 55%, #4338ca 100%);
+        -webkit-background-clip: text; background-clip: text; color: transparent;
+      }
+      .logo-tagline {
+        font-size: 10px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase;
+        color: var(--muted-dim); white-space: nowrap;
+      }
+      footer .logo-mark { height: 36px; }
+      footer .logo-word { font-size: 17px; }
+      footer .logo-tagline { display: none; }
+      .nav { display: flex; align-items: center; gap: 6px; }
+      .nav a.link { color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 500; padding: 8px 14px; border-radius: 8px; transition: 0.2s; }
+      .nav a.link:hover { color: var(--text); background: rgba(124, 131, 255, 0.08); }
+
+      .btn {
+        display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+        padding: 12px 22px; border-radius: 11px; font-weight: 600; font-size: 14.5px;
+        text-decoration: none; border: 1px solid var(--border-strong); color: var(--text);
+        transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+      }
+      .btn:hover { transform: translateY(-2px); }
+      .btn.primary {
+        background: linear-gradient(135deg, var(--brand), var(--brand2));
+        border-color: transparent; box-shadow: 0 10px 30px -10px var(--brand2);
+      }
+      .btn.primary:hover { box-shadow: 0 16px 40px -12px var(--brand2); }
+      .btn.ghost { background: rgba(255, 255, 255, 0.03); }
+      .btn svg { width: 16px; height: 16px; }
+
+      .badge {
+        display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px;
+        border: 1px solid var(--border-strong); border-radius: 999px; color: var(--brand3);
+        font-size: 13px; font-weight: 600; background: rgba(124, 131, 255, 0.08);
+      }
+      .badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 4px rgba(52,211,153,0.18); }
+
+      /* Hero */
+      .hero { padding: 78px 0 40px; }
+      .hero-grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 56px; align-items: center; }
+      h1 { font-size: 58px; line-height: 1.05; letter-spacing: -0.035em; font-weight: 800; }
+      h1 .grad { background: linear-gradient(110deg, var(--brand) 10%, var(--brand3) 55%, var(--cyan) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+      .hero p.sub { color: var(--muted); font-size: 18.5px; margin: 24px 0 32px; max-width: 560px; }
+      .cta-row { display: flex; gap: 14px; flex-wrap: wrap; }
+      .trust { margin-top: 30px; display: flex; align-items: center; gap: 14px; color: var(--muted-dim); font-size: 13px; }
+      .trust .frameworks { display: flex; gap: 8px; flex-wrap: wrap; }
+
+      /* Hero visual: product mock over real photo */
+      .hero-visual { position: relative; }
+      .hero-photo {
+        border-radius: 22px; overflow: hidden; border: 1px solid var(--border-strong);
+        box-shadow: var(--shadow); position: relative;
+      }
+      .hero-photo img { width: 100%; height: 420px; object-fit: cover; display: block; filter: saturate(1.05); }
+      .hero-photo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(7,11,24,0.1), rgba(7,11,24,0.78)); }
+      .float-card {
+        position: absolute; background: rgba(12, 18, 36, 0.92); backdrop-filter: blur(10px);
+        border: 1px solid var(--border-strong); border-radius: 14px; padding: 14px 16px;
+        box-shadow: 0 20px 50px -20px rgba(0,0,0,0.8); z-index: 2;
+      }
+      .float-card .row { display: flex; align-items: center; gap: 10px; }
+      .float-card .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+      .float-card .val { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+      .chip { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+      .chip.crit { color: var(--crit); background: rgba(251,113,133,0.14); }
+      .chip.ok { color: var(--ok); background: rgba(52,211,153,0.14); }
+      .fc-1 { top: 24px; left: -26px; }
+      .fc-2 { bottom: 28px; right: -22px; }
+      .fc-3 { bottom: -22px; left: 30px; }
+      .scorebar { width: 120px; height: 6px; border-radius: 999px; background: rgba(255,255,255,0.1); overflow: hidden; margin-top: 8px; }
+      .scorebar > i { display: block; height: 100%; background: linear-gradient(90deg, var(--crit), #f97316); }
+
+      /* Stats band */
+      .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin: 56px 0 10px; }
+      .stat { text-align: center; padding: 22px 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--card); }
+      .stat .num { font-size: 34px; font-weight: 800; letter-spacing: -0.03em; background: linear-gradient(120deg, var(--brand), var(--brand3)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+      .stat .cap { color: var(--muted); font-size: 13.5px; margin-top: 2px; }
+
+      /* Section heading */
+      .eyebrow { color: var(--brand); font-weight: 700; font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; }
+      .sec-head { text-align: center; max-width: 720px; margin: 0 auto 48px; }
+      .sec-head h2 { font-size: 38px; letter-spacing: -0.03em; margin: 12px 0 14px; font-weight: 800; }
+      .sec-head p { color: var(--muted); font-size: 17px; }
+      section.block { padding: 92px 0; }
+
+      /* Problem split */
+      .split { display: grid; grid-template-columns: 1fr 1fr; gap: 54px; align-items: center; }
+      .split img { width: 100%; border-radius: 20px; border: 1px solid var(--border-strong); box-shadow: var(--shadow); height: 100%; max-height: 440px; object-fit: cover; }
+      .split h2 { font-size: 36px; letter-spacing: -0.03em; line-height: 1.12; margin: 14px 0 18px; }
+      .split p.lead { color: var(--muted); font-size: 17px; margin-bottom: 22px; }
+      .risk-list { display: flex; flex-direction: column; gap: 14px; }
+      .risk-item { display: flex; gap: 14px; align-items: flex-start; }
+      .risk-item .ic { flex: none; width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; background: rgba(251,113,133,0.12); color: var(--crit); }
+      .risk-item .ic svg { width: 19px; height: 19px; }
+      .risk-item h4 { font-size: 15.5px; margin-bottom: 2px; }
+      .risk-item p { color: var(--muted); font-size: 14px; }
+
+      /* Feature grid */
+      .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+      .card {
+        background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+        padding: 28px; transition: transform 0.2s ease, border-color 0.2s ease;
+        position: relative; overflow: hidden;
+      }
+      .card::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 2px; background: linear-gradient(90deg, transparent, var(--brand), transparent); opacity: 0; transition: 0.25s; }
+      .card:hover { transform: translateY(-4px); border-color: var(--border-strong); }
+      .card:hover::before { opacity: 1; }
+      .card .ico { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; margin-bottom: 16px; background: linear-gradient(135deg, rgba(124,131,255,0.18), rgba(91,84,240,0.12)); color: var(--brand3); }
+      .card .ico svg { width: 23px; height: 23px; }
+      .card h3 { font-size: 18px; margin-bottom: 8px; letter-spacing: -0.01em; }
+      .card p { color: var(--muted); font-size: 14.5px; }
+
+      /* How it works */
+      .flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; position: relative; }
+      .flow::before { content: ""; position: absolute; top: 27px; left: 8%; right: 8%; height: 2px; background: linear-gradient(90deg, var(--brand2), var(--cyan)); opacity: 0.4; }
+      .step { text-align: center; position: relative; }
+      .step .n {
+        width: 54px; height: 54px; border-radius: 50%; margin: 0 auto 18px;
+        display: grid; place-items: center; font-weight: 800; font-size: 19px;
+        background: var(--bg-soft); border: 2px solid var(--brand2); color: var(--brand3);
+        box-shadow: 0 0 0 6px rgba(91,84,240,0.08);
+      }
+      .step h4 { font-size: 15.5px; margin-bottom: 5px; }
+      .step p { font-size: 13px; color: var(--muted); }
+
+      /* Showcase band over image */
+      .showcase {
+        border-radius: 26px; overflow: hidden; position: relative; border: 1px solid var(--border-strong);
+        box-shadow: var(--shadow);
+      }
+      .showcase img.bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+      .showcase .veil { position: absolute; inset: 0; background: linear-gradient(110deg, rgba(7,11,24,0.95) 30%, rgba(12,18,36,0.7) 70%); }
+      .showcase .content { position: relative; padding: 64px 56px; max-width: 620px; }
+      .showcase h2 { font-size: 34px; letter-spacing: -0.03em; margin-bottom: 16px; line-height: 1.15; }
+      .showcase p { color: var(--muted); font-size: 16.5px; margin-bottom: 26px; }
+      .check-list { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 22px; margin-bottom: 6px; }
+      .check { display: flex; align-items: center; gap: 10px; font-size: 14.5px; }
+      .check .tick { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: rgba(52,211,153,0.16); color: var(--ok); flex: none; }
+      .check .tick svg { width: 13px; height: 13px; }
+
+      /* Platform reuse */
+      .reuse { background: var(--card); border: 1px solid var(--border); border-radius: 22px; padding: 44px; }
+      .reuse-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 36px; align-items: center; }
+      .pills { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+      .pill { border: 1px solid var(--border-strong); border-radius: 999px; padding: 9px 15px; font-size: 13.5px; color: var(--text); background: rgba(124,131,255,0.06); }
+      .pill b { color: var(--brand3); }
+      .reuse h2 { font-size: 30px; letter-spacing: -0.03em; margin-bottom: 12px; }
+      .reuse p.lead { color: var(--muted); font-size: 16px; margin-bottom: 8px; }
+
+      /* Final CTA */
+      .cta-final {
+        position: relative; border-radius: 28px; overflow: hidden; text-align: center;
+        border: 1px solid var(--border-strong); box-shadow: var(--shadow);
+      }
+      .cta-final img.bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+      .cta-final .veil { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(91,84,240,0.42), rgba(7,11,24,0.92)); }
+      .cta-final .content { position: relative; padding: 84px 24px; }
+      .cta-final h2 { font-size: 42px; letter-spacing: -0.035em; margin-bottom: 14px; }
+      .cta-final p { color: #d7dcf2; font-size: 18px; max-width: 560px; margin: 0 auto 32px; }
+      .cta-final .cta-row { justify-content: center; }
+
+      footer { border-top: 1px solid rgba(124,131,255,0.1); margin-top: 92px; padding: 44px 0 38px; }
+      .foot-grid { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+      footer .muted { color: var(--muted-dim); font-size: 13.5px; }
+      footer .foot-links { display: flex; gap: 22px; }
+      footer .foot-links a { color: var(--muted); text-decoration: none; font-size: 13.5px; }
+      footer .foot-links a:hover { color: var(--text); }
+
+      @media (max-width: 980px) {
+        .hero-grid, .split, .reuse-grid { grid-template-columns: 1fr; }
+        .hero-visual { order: -1; }
+        .stats { grid-template-columns: repeat(2, 1fr); }
+        .grid { grid-template-columns: repeat(2, 1fr); }
+        .flow { grid-template-columns: repeat(2, 1fr); gap: 28px; }
+        .flow::before { display: none; }
+        .check-list { grid-template-columns: 1fr; }
+      }
+      @media (max-width: 640px) {
+        h1 { font-size: 40px; }
+        .sec-head h2 { font-size: 30px; }
+        .grid, .flow { grid-template-columns: 1fr; }
+        .nav .link { display: none; }
+        .showcase .content { padding: 40px 26px; }
+        .reuse { padding: 28px; }
+      }
+    </style>
+  </head>
+  <body id="top">
+    <div class="glow a"></div>
+    <div class="glow b"></div>
+    <div class="glow c"></div>
+
+    <header>
+      <div class="wrap nav-inner">
+        <a class="logo" href="#top" aria-label="AgentShadow home">
+          <img class="logo-mark" src="assets/logo-mark.png" alt="" width="645" height="154" />
+          <span class="logo-copy">
+            <span class="logo-word"><span class="logo-agent">Agent</span><span class="logo-shadow">Shadow</span></span>
+            <span class="logo-tagline">Discover. Govern. Protect.</span>
+          </span>
+        </a>
+        <nav class="nav">
+          <a class="link" href="#problem">The problem</a>
+          <a class="link" href="#features">Capabilities</a>
+          <a class="link" href="#how">How it works</a>
+          <a class="link" href="#platform">Platform</a>
+          <a class="btn primary" href="/dashboard">Open dashboard</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <!-- HERO -->
+      <section class="hero">
+        <div class="wrap hero-grid">
+          <div>
+            <span class="badge"><span class="dot"></span> Discover. Govern. Protect.</span>
+            <h1 style="margin-top:22px">Every AI agent in your org,<br /><span class="grad">discovered, scored &amp; governed.</span></h1>
+            <p class="sub">
+              Shadow agents are multiplying across your codebase and SaaS stack — often with shell access,
+              unbounded autonomy and no owner. AgentShadow finds them all, scores their risk deterministically,
+              and enforces your governance policies before they become an incident.
+            </p>
+            <div class="cta-row">
+              <a class="btn primary" href="/dashboard">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                Open the dashboard
+              </a>
+            </div>
+            <div class="trust">
+              <span>Detects</span>
+              <div class="frameworks mono" style="display:flex;gap:8px;flex-wrap:wrap;color:var(--muted)">
+                <span class="pill" style="padding:4px 10px">LangChain</span>
+                <span class="pill" style="padding:4px 10px">CrewAI</span>
+                <span class="pill" style="padding:4px 10px">AutoGPT</span>
+                <span class="pill" style="padding:4px 10px">AutoGen</span>
+                <span class="pill" style="padding:4px 10px">OpenAI Assistants</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="hero-visual">
+            <div class="hero-photo">
+              <img src="assets/hero-ai.jpg" alt="Abstract visualization of an autonomous AI agent network" />
+            </div>
+            <div class="float-card fc-1">
+              <div class="label">Agents discovered</div>
+              <div class="row" style="margin-top:4px"><span class="val">247</span><span class="chip ok">live</span></div>
+            </div>
+            <div class="float-card fc-2">
+              <div class="label">payments-orchestrator</div>
+              <div class="row" style="margin-top:6px"><span class="val" style="color:var(--crit)">92</span><span class="chip crit">CRITICAL</span></div>
+              <div class="scorebar"><i style="width:92%"></i></div>
+            </div>
+            <div class="float-card fc-3">
+              <div class="row">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                <span style="font-size:13px">Policy: owner required · <b style="color:var(--ok)">PASS</b></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="wrap">
+          <div class="stats">
+            <div class="stat"><div class="num">7</div><div class="cap">Agent frameworks detected</div></div>
+            <div class="stat"><div class="num">0–100</div><div class="cap">Deterministic risk scoring</div></div>
+            <div class="stat"><div class="num">2-way</div><div class="cap">Code scan + runtime sync</div></div>
+            <div class="stat"><div class="num">1-click</div><div class="cap">Branded PDF assessments</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PROBLEM -->
+      <section class="block" id="problem">
+        <div class="wrap split">
+          <div>
+            <img src="assets/code.jpg" alt="Source code on a developer screen where AI agents hide" />
+          </div>
+          <div>
+            <span class="eyebrow">The shadow agent problem</span>
+            <h2>Agents are shipping faster than security can see them.</h2>
+            <p class="lead">
+              A single prompt and a few lines of LangChain can spin up an agent with tool access,
+              memory and autonomy — committed straight to <span class="mono">main</span>. Most never reach a
+              security review. AgentShadow surfaces them automatically.
+            </p>
+            <div class="risk-list">
+              <div class="risk-item">
+                <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/></svg></span>
+                <div><h4>Unbounded shell &amp; tool access</h4><p>Agents wired to <span class="mono">os.system</span>, code execution and API keys with no guardrails.</p></div>
+              </div>
+              <div class="risk-item">
+                <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span>
+                <div><h4>Autonomous loops with no owner</h4><p>Long-running agents acting on production data that no team has claimed.</p></div>
+              </div>
+              <div class="risk-item">
+                <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg></span>
+                <div><h4>Sprawl across code &amp; SaaS</h4><p>The same fleet spans Git repos and runtime platforms like OpenAI Assistants.</p></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FEATURES -->
+      <section class="block" id="features">
+        <div class="wrap">
+          <div class="sec-head">
+            <span class="eyebrow">Capabilities</span>
+            <h2>One platform, the full agent lifecycle</h2>
+            <p>From first discovery to a board-ready report — AgentShadow observes, never changes agent behavior.</p>
+          </div>
+          <div class="grid">
+            <div class="card">
+              <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></div>
+              <h3>Discover</h3>
+              <p>Scan source code for agent frameworks and sync runtime connectors to surface live, deployed agents.</p>
+            </div>
+            <div class="card">
+              <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="9" width="3" height="9"/><rect x="13" y="5" width="3" height="13"/></svg></div>
+              <h3>Inventory</h3>
+              <p>A single, always-current "Discovered Agents" view with owner, framework, tools and autonomy level.</p>
+            </div>
+            <div class="card">
+              <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.5" fill="currentColor"/></svg></div>
+              <h3>Score</h3>
+              <p>Deterministic 0–100 risk scoring — shell access, unbounded autonomy, missing guardrails, exposed secrets.</p>
+            </div>
+            <div class="card">
+              <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.4 8 8 11 4.6-3 8-6 8-11V5l-8-3Z"/></svg></div>
+              <h3>Govern</h3>
+              <p>YAML policies evaluate every agent: allow, warn or deny — with a full per-policy decision trail.</p>
+            </div>
+            <div class="card">
+              <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h6"/></svg></div>
+              <h3>Report</h3>
+              <p>Branded PDF agent assessments for auditors, customers and security reviews — generated in one click.</p>
+            </div>
+            <div class="card">
+              <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M9 6h6a3 3 0 0 1 3 3v6"/></svg></div>
+              <h3>Correlate</h3>
+              <p>Feeds the shared correlation graph as a first-class source alongside Valo, LLMShadow and SaaSShadow.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- HOW IT WORKS -->
+      <section class="block" id="how">
+        <div class="wrap">
+          <div class="sec-head">
+            <span class="eyebrow">How it works</span>
+            <h2>From shadow to governed in five steps</h2>
+            <p>No agents change behavior. AgentShadow observes, scores and reports.</p>
+          </div>
+          <div class="flow">
+            <div class="step"><div class="n">1</div><h4>Discover</h4><p>Code scan + runtime connectors</p></div>
+            <div class="step"><div class="n">2</div><h4>Inventory</h4><p>Canonical agent records</p></div>
+            <div class="step"><div class="n">3</div><h4>Score</h4><p>Deterministic risk engine</p></div>
+            <div class="step"><div class="n">4</div><h4>Govern</h4><p>Policy allow / warn / deny</p></div>
+            <div class="step"><div class="n">5</div><h4>Report</h4><p>PDF + correlation graph</p></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SHOWCASE -->
+      <section class="block" style="padding-top:0">
+        <div class="wrap">
+          <div class="showcase">
+            <img class="bg" src="assets/datacenter.jpg" alt="Data center where production AI agents run" />
+            <div class="veil"></div>
+            <div class="content">
+              <span class="eyebrow">Executive visibility</span>
+              <h2 style="margin-top:12px">Know your agent risk before your auditors do.</h2>
+              <p>A live executive dashboard turns scattered agents into a single posture you can brief leadership on — total agents, high-risk count, unmanaged agents, autonomy and policy breaches.</p>
+              <div class="check-list">
+                <div class="check"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span> Risk distribution by band</div>
+                <div class="check"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span> Breakdown by framework</div>
+                <div class="check"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span> Unmanaged &amp; ownerless agents</div>
+                <div class="check"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span> Policy breach tracking</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PLATFORM / REUSE -->
+      <section class="block" id="platform" style="padding-top:0">
+        <div class="wrap">
+          <div class="reuse">
+            <div class="reuse-grid">
+              <div>
+                <span class="eyebrow">Built on a proven platform</span>
+                <h2 style="margin-top:12px">New content, not a new architecture.</h2>
+                <p class="lead">AgentShadow reuses battle-tested engines from the Valo security ecosystem — so the detection logic, scoring math and reporting are already hardened in production.</p>
+                <div class="pills">
+                  <span class="pill"><b>LLMShadow</b> framework detection</span>
+                  <span class="pill"><b>Valo</b> deterministic scoring</span>
+                  <span class="pill"><b>Valo</b> governance policy engine</span>
+                  <span class="pill"><b>Valo</b> ReportLab PDF reporting</span>
+                  <span class="pill"><b>SaaSShadow</b> inventory dashboard</span>
+                  <span class="pill"><b>Correlation Engine</b> cross-tool graph</span>
+                </div>
+              </div>
+              <div>
+                <img src="assets/security.jpg" alt="Security operations and governance" style="width:100%;border-radius:16px;border:1px solid var(--border-strong);box-shadow:var(--shadow);height:300px;object-fit:cover" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FINAL CTA -->
+      <section class="block" style="padding-top:0">
+        <div class="wrap">
+          <div class="cta-final">
+            <img class="bg" src="assets/team.jpg" alt="Security team reviewing AI agent posture" />
+            <div class="veil"></div>
+            <div class="content">
+              <span class="badge"><span class="dot"></span> Ready in minutes</span>
+              <h2 style="margin-top:18px">See every agent. Score the risk. Stay in control.</h2>
+              <p>Run a discovery scan against your repos, sync a runtime connector, and watch your shadow agent fleet light up — scored, governed and report-ready.</p>
+              <div class="cta-row">
+                <a class="btn primary" href="/dashboard">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                  Open the dashboard
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap foot-grid">
+        <a class="logo" href="#top" aria-label="AgentShadow home">
+          <img class="logo-mark" src="assets/logo-mark.png" alt="" width="645" height="154" />
+          <span class="logo-copy">
+            <span class="logo-word"><span class="logo-agent">Agent</span><span class="logo-shadow">Shadow</span></span>
+            <span class="logo-tagline">Discover. Govern. Protect.</span>
+          </span>
+        </a>
+        <nav class="foot-links">
+          <a href="#problem">Problem</a>
+          <a href="#features">Capabilities</a>
+          <a href="#how">How it works</a>
+          <a href="#platform">Platform</a>
+        </nav>
+        <div class="muted">© AgentShadow · AI Agent Security Posture Management</div>
+      </div>
+    </footer>
+  </body>
+</html>

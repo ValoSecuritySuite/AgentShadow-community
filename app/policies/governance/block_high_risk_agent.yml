@@ -1,0 +1,17 @@
+id: block_high_risk_agent
+name: Block high-risk agents
+description: Deny any agent whose combined risk score crosses the enterprise threshold.
+enabled: true
+enforce: true
+tags:
+  - governance:enterprise
+  - severity:critical
+when:
+  - field: risk_score
+    op: gte
+    value: 80
+then:
+  decision: deny
+  severity: 9
+  message: Agent risk score is at or above the enterprise deny threshold (>= 80).
+version: 1

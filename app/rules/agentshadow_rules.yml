@@ -1,0 +1,163 @@
+# AgentShadow detection rules
+#
+# Two sections (same schema as Valo / LLMShadow):
+#   - rules:           context rules evaluated against agent metadata
+#   - text_scan_rules: regex/keyword rules run over the agent artifact
+#                      (system prompt + tool defs + detected evidence)
+#
+# text_scan_rule families drive the deterministic "breadth bonus" in scoring.
+# Framework-detection rules use the `af_` id prefix; behaviour rules use `ab_`.
+
+rules:
+  # ── Context rules: scored against agent metadata ──────────────────────────
+  - name: "high_autonomy_agent"
+    severity: 4
+    weight: 30
+    enabled: true
+    patterns:
+      - field: "autonomy_level"
+        op: "eq"
+        value: "high"
+
+  - name: "excessive_tool_count"
+    severity: 3
+    weight: 20
+    enabled: true
+    patterns:
+      - field: "tool_count"
+        op: "gte"
+        value: 4
+
+  - name: "shell_capable_agent"
+    severity: 5
+    weight: 35
+    enabled: true
+    patterns:
+      - field: "has_shell_exec"
+        op: "eq"
+        value: true
+
+  - name: "code_execution_capable"
+    severity: 4
+    weight: 25
+    enabled: true
+    patterns:
+      - field: "has_code_interpreter"
+        op: "eq"
+        value: true
+
+  - name: "unmanaged_agent"
+    severity: 2
+    weight: 10
+    enabled: true
+    patterns:
+      - field: "owner"
+        op: "eq"
+        value: "unassigned"
+
+text_scan_rules:
+  # ── Framework presence (af_*) ─────────────────────────────────────────────
+  - id: "af_langchain"
+    family: "agent_framework"
+    category: "regex"
+    pattern: '\b(?:import\s+langchain|AgentExecutor\s*\(|initialize_agent\s*\()'
+    severity: 2
+    weight: 10
+    description: "LangChain agent framework usage"
+
+  - id: "af_langgraph"
+    family: "agent_framework"
+    category: "regex"
+    pattern: '\b(?:import\s+langgraph|StateGraph\s*\()'
+    severity: 2
+    weight: 10
+    description: "LangGraph stateful agent usage"
+
+  - id: "af_crewai"
+    family: "agent_framework"
+    category: "regex"
+    pattern: '\b(?:import\s+crewai|Crew\s*\(|Agent\s*\(\s*role\s*=)'
+    severity: 2
+    weight: 10
+    description: "CrewAI multi-agent framework usage"
+
+  - id: "af_autogpt"
+    family: "agent_framework"
+    category: "regex"
+    pattern: '\b(?:import\s+autogpt|Auto\s*GPT\s*\()'
+    severity: 3
+    weight: 12
+    description: "AutoGPT autonomous agent usage"
+
+  - id: "af_autogen"
+    family: "agent_framework"
+    category: "regex"
+    pattern: '\b(?:import\s+autogen|AssistantAgent\s*\(|ConversableAgent\s*\()'
+    severity: 2
+    weight: 10
+    description: "Microsoft AutoGen agent usage"
+
+  - id: "af_openai_assistants"
+    family: "agent_framework"
+    category: "regex"
+    pattern: '\b(?:beta\.assistants|client\.beta\.assistants\.create\s*\()'
+    severity: 2
+    weight: 10
+    description: "OpenAI Assistants API usage"
+
+  - id: "af_llama_index"
+    family: "agent_framework"
+    category: "regex"
+    pattern: '\b(?:import\s+llama_index|ReActAgent)'
+    severity: 2
+    weight: 10
+    description: "LlamaIndex agent usage"
+
+  # ── Agent behaviour / posture risks (ab_*) ────────────────────────────────
+  - id: "ab_shell_tool"
+    family: "dangerous_tool"
+    category: "regex"
+    pattern: '\b(?:ShellTool|subprocess\.(?:run|Popen|call)|os\.system|PythonREPL)\b'
+    severity: 5
+    weight: 35
+    description: "Agent can execute shell / arbitrary code"
+
+  - id: "ab_unbounded_autonomy"
+    family: "autonomy"
+    category: "regex"
+    pattern: '\b(?:max_iterations\s*=\s*None|while\s+True|auto_approve\s*=\s*True|human_input_mode\s*=\s*[\"'']NEVER[\"''])'
+    severity: 4
+    weight: 28
+    description: "Unbounded loop or auto-approved actions without a stop condition"
+
+  - id: "ab_missing_human_approval"
+    family: "guardrail"
+    category: "regex"
+    pattern: '\b(?:allow_dangerous_(?:code|requests|tools)\s*=\s*True|verbose\s*=\s*True[^)]*allow_dangerous)'
+    severity: 4
+    weight: 25
+    description: "Dangerous capabilities enabled without human approval gate"
+
+  - id: "ab_hardcoded_credential"
+    family: "secret_exposure"
+    category: "regex"
+    pattern: '\b(?:sk-[A-Za-z0-9]{20,}|api_key\s*=\s*[\"''][A-Za-z0-9_\-]{16,}[\"''])'
+    severity: 5
+    weight: 35
+    description: "Hardcoded API key / credential in agent definition"
+
+  - id: "ab_prompt_injection_surface"
+    family: "prompt_safety"
+    category: "keyword"
+    pattern: "ignore previous instructions"
+    severity: 3
+    weight: 15
+    description: "Agent prompt references injection-style override language"
+
+  - id: "ab_data_exfiltration_tool"
+    family: "dangerous_tool"
+    category: "regex"
+    pattern: '\b(?:send_email|smtplib|requests\.post|httpx\.post)\b'
+    severity: 3
+    weight: 18
+    description: "Agent can send data to external destinations"

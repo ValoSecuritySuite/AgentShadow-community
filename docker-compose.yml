@@ -1,0 +1,62 @@
+# AgentShadow Community Edition standalone stack.
+#
+#   cp .env.example .env
+#   docker compose up --build
+#
+# Runs on its own ports so it can sit next to the full AgentShadow stack
+# (which uses 8003 / 3001):
+#   - AgentShadow API   http://localhost:8013   (health: /health, docs: /docs, meta: /meta)
+#   - AgentShadow UI    http://localhost:3011   (landing: / · dashboard: /dashboard · pricing: /pricing)
+#
+# This is the free Community Edition: source-code discovery, scoring, inventory,
+# dashboard and governance viewing all work. Runtime connectors, PDF reports and
+# the correlation feed are locked behind an upgrade (set APP_EDITION=pro to unlock).
+
+services:
+  agentshadow-community:
+    build:
+      context: .
+    ports:
+      - "8013:8000"
+    environment:
+      APP_LOG_LEVEL: ${APP_LOG_LEVEL:-INFO}
+      APP_CORS_ALLOWED_ORIGINS: '["*"]'
+      APP_API_KEYS: ${APP_API_KEYS:-}
+      APP_EDITION: ${APP_EDITION:-community}
+      APP_UPGRADE_URL: ${APP_UPGRADE_URL:-http://localhost:3011/pricing}
+      APP_CORRELATION_ENGINE_ENABLED: "false"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 8s
+    volumes:
+      - agentshadow-community-data:/app/data
+    networks:
+      - agentshadow-community-net
+    restart: unless-stopped
+
+  agentshadow-community-frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8013}
+        NEXT_PUBLIC_API_KEY: ${NEXT_PUBLIC_API_KEY:-}
+        NEXT_PUBLIC_EDITION: ${NEXT_PUBLIC_EDITION:-community}
+        NEXT_PUBLIC_UPGRADE_URL: ${NEXT_PUBLIC_UPGRADE_URL:-/pricing}
+    ports:
+      - "3011:3000"
+    depends_on:
+      agentshadow-community:
+        condition: service_healthy
+    networks:
+      - agentshadow-community-net
+    restart: unless-stopped
+
+networks:
+  agentshadow-community-net:
+    driver: bridge
+
+volumes:
+  agentshadow-community-data:

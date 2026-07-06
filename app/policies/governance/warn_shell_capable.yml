@@ -1,0 +1,17 @@
+id: warn_shell_capable
+name: Warn on shell-capable agents
+description: Flag agents that can execute shell commands or arbitrary code for review.
+enabled: true
+enforce: false
+tags:
+  - capability:code-execution
+  - severity:high
+when:
+  - field: has_shell_exec
+    op: eq
+    value: true
+then:
+  decision: warn
+  severity: 7
+  message: Agent has shell / code-execution capability and should be reviewed for guardrails.
+version: 1

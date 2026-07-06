@@ -1,0 +1,17 @@
+id: require_owner
+name: Require an assigned owner
+description: Every discovered agent must have an accountable owner; unassigned agents are flagged.
+enabled: true
+enforce: false
+tags:
+  - governance:accountability
+  - severity:medium
+when:
+  - field: owner
+    op: eq
+    value: unassigned
+then:
+  decision: warn
+  severity: 4
+  message: Agent has no assigned owner. Assign accountability before production use.
+version: 1

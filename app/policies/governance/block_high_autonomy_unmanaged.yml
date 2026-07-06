@@ -1,0 +1,20 @@
+id: block_high_autonomy_unmanaged
+name: Block unmanaged high-autonomy agents
+description: High-autonomy agents without an owner are denied until governed.
+enabled: true
+enforce: true
+tags:
+  - governance:enterprise
+  - capability:autonomy
+when:
+  - field: autonomy_level
+    op: eq
+    value: high
+  - field: owner
+    op: eq
+    value: unassigned
+then:
+  decision: deny
+  severity: 8
+  message: High-autonomy agent has no owner. Assign accountability and guardrails before use.
+version: 1

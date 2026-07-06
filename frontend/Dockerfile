@@ -1,0 +1,32 @@
+# Multi-stage build for the AgentShadow Next.js dashboard (standalone output).
+FROM node:22-slim AS builder
+WORKDIR /app
+
+ARG NEXT_PUBLIC_API_URL=http://localhost:8013
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_API_KEY=
+ENV NEXT_PUBLIC_API_KEY=$NEXT_PUBLIC_API_KEY
+ARG NEXT_PUBLIC_EDITION=community
+ENV NEXT_PUBLIC_EDITION=$NEXT_PUBLIC_EDITION
+ARG NEXT_PUBLIC_UPGRADE_URL=/pricing
+ENV NEXT_PUBLIC_UPGRADE_URL=$NEXT_PUBLIC_UPGRADE_URL
+
+COPY package.json package-lock.json* ./
+RUN npm install --no-audit --no-fund
+
+COPY . .
+RUN npm run build
+
+FROM node:22-slim AS runner
+WORKDIR /app
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    PORT=3000 \
+    HOSTNAME=0.0.0.0
+
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
+EXPOSE 3000
+CMD ["node", "server.js"]
