@@ -94,6 +94,26 @@ The commercial AgentShadow platform adds:
 
 ---
 
+## Quick start (Docker)
+
+```bash
+# macOS / Linux
+./start.sh
+
+# Windows (double-click, or from cmd/PowerShell in this folder)
+start.bat
+```
+
+Or with Compose directly:
+
+```bash
+cp .env.example .env
+docker compose up --build
+# API http://localhost:8013 · UI http://localhost:3011
+```
+
+---
+
 ## Vision
 
 AgentShadow is part of the Valo Security Platform, providing comprehensive visibility, governance, and enforcement across AI prompts, models, SaaS applications, and autonomous AI agents.
