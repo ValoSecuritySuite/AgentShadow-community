@@ -1,43 +1,32 @@
 #!/usr/bin/env bash
-set -Eeuo pipefail
+set -euo pipefail
 
-cd "$(dirname "${BASH_SOURCE[0]}")"
-chmod +x "$0" 2>/dev/null || true
+test -f requirements.txt && test -f frontend/package.json || { echo "Run from the AgentShadow-community repository root."; exit 1; }
 
-if ! command -v docker >/dev/null 2>&1; then
-  echo "Docker is required. Install/start Docker, then rerun this script." >&2
-  exit 1
+python -m pip install -r requirements.txt
+test -d frontend/node_modules || npm --prefix frontend ci
+if test -f scripts/seed_demo.py; then python -m scripts.seed_demo; fi
+
+if ! curl -fsS http://127.0.0.1:8013/health >/dev/null 2>&1; then
+  nohup env APP_EDITION=community APP_LOG_LEVEL=INFO \
+    APP_CORRELATION_ENGINE_ENABLED=false APP_API_KEYS= \
+    python -m uvicorn app.main:app --host 127.0.0.1 --port 8013 \
+    >/tmp/agentshadow-community-api.log 2>&1 &
+  echo $! >/tmp/agentshadow-community-api.pid
 fi
 
-if docker compose version >/dev/null 2>&1; then
-  COMPOSE=(docker compose)
-elif command -v docker-compose >/dev/null 2>&1; then
-  COMPOSE=(docker-compose)
-else
-  echo "Docker Compose is required." >&2
-  exit 1
+for _ in $(seq 1 30); do curl -fsS http://127.0.0.1:8013/health >/dev/null 2>&1 && break; sleep 1; done
+curl -fsS http://127.0.0.1:8013/health >/dev/null || { tail -n 200 /tmp/agentshadow-community-api.log; exit 1; }
+
+if ! curl -fsS http://127.0.0.1:3011 >/dev/null 2>&1; then
+  nohup env NEXT_PUBLIC_API_URL=http://127.0.0.1:8013 NEXT_PUBLIC_API_KEY= \
+    NEXT_PUBLIC_EDITION=community NEXT_PUBLIC_UPGRADE_URL=/pricing \
+    npm --prefix frontend run dev -- --hostname 127.0.0.1 --port 3011 \
+    >/tmp/agentshadow-community-web.log 2>&1 &
+  echo $! >/tmp/agentshadow-community-web.pid
 fi
 
-if [[ ! -f .env && -f .env.example ]]; then
-  cp .env.example .env
-fi
+for _ in $(seq 1 45); do curl -fsS http://127.0.0.1:3011/dashboard >/dev/null 2>&1 && break; sleep 1; done
+curl -fsS http://127.0.0.1:3011/dashboard >/dev/null || { tail -n 200 /tmp/agentshadow-community-web.log; exit 1; }
+echo "AgentShadow Community demo ready: Dashboard http://localhost:3011/dashboard | API docs http://localhost:8013/docs"
 
-"${COMPOSE[@]}" up --build -d
-echo "Waiting for AgentShadow Community API..."
-for _ in {1..30}; do
-  if "${COMPOSE[@]}" exec -T agentshadow-community python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" >/dev/null 2>&1; then
-    break
-  fi
-  sleep 2
-done
-if "${COMPOSE[@]}" exec -T agentshadow-community python -m scripts.seed_demo >/dev/null 2>&1; then
-  echo "Demo fleet seeded."
-else
-  echo "Services started; bundled seed command was not available."
-fi
-echo "AgentShadow Community is ready."
-echo "Landing page: http://localhost:3011"
-echo "Dashboard:    http://localhost:3011/dashboard"
-echo "API:          http://localhost:8013"
-echo "Docs:         http://localhost:8013/docs"
-echo "Stop with: ${COMPOSE[*]} down"
